@@ -2,15 +2,7 @@
   "include": [
     {
       "templatePath": "project.hbs",
-      "outputPath": "BaristaLabs.ChromeDevTools.Runtime.csproj"
-    },
-    {
-      "templatePath": "ChromeSession.hbs",
-      "outputPath": "ChromeSession.cs"
-    },
-    {
-      "templatePath": "ChromeSession_Domains.hbs",
-      "outputPath": "ChromeSession_Domains.cs"
+      "outputPath": "DevTools.csproj"
     },
     {
       "templatePath": "CommandResponseException.hbs",
@@ -25,6 +17,18 @@
       "outputPath": "CommandResponseTypeMap.cs"
     },
     {
+      "templatePath": "DevToolsSession.hbs",
+      "outputPath": "DevToolsSession.cs"
+    },
+    {
+      "templatePath": "DevToolsSession_Domains.hbs",
+      "outputPath": "DevToolsSession_Domains.cs"
+    },
+    {
+      "templatePath": "DevToolsSessionLogMessageEventArgs.hbs",
+      "outputPath": "DevToolsSessionLogMessageEventArgs.cs"
+    },
+    {
       "templatePath": "EventTypeMap.hbs",
       "outputPath": "EventTypeMap.cs"
     },
@@ -37,6 +41,6 @@
       "outputPath": "IEvent.cs"
     }
   ],
-  "rootNamespace": "BaristaLabs.ChromeDevTools.Runtime",
+  "rootNamespace": "OpenQA.Selenium.DevTools",
   "runtimeVersion":  ""
 }
