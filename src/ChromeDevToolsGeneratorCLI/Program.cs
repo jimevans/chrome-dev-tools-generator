@@ -51,7 +51,7 @@
             var codeFiles = protocolGenerator.GenerateCode(protocolDefinition, null);
 
             //Delete the output folder if force is specified and it exists...
-            Console.WriteLine("Writing generated code files...");
+            Console.WriteLine("Writing generated code files to {0}...", cliArguments.OutputPath);
             if (Directory.Exists(cliArguments.OutputPath) && cliArguments.ForceOverwrite)
             {
                 Console.WriteLine("Generating protocol definition project...");
