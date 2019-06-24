@@ -96,6 +96,9 @@
                     case "any":
                         mappedType = "object";
                         break;
+                    case "binary":
+                        mappedType = "byte[]";
+                        break;
                     case "array":
                         mappedType = GetTypeMappingForType(typeDefinition.Items, domainDefinition, knownTypes, true);
                         break;
