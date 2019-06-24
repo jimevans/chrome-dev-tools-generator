@@ -7,12 +7,12 @@
     /// </summary>
     public sealed class {{className}}Command : ICommand
     {
-        private const string ChromeRemoteInterface_CommandName = "{{domain.Name}}.{{command.Name}}";
+        private const string DevToolsRemoteInterface_CommandName = "{{domain.Name}}.{{command.Name}}";
         
         [JsonIgnore]
         public string CommandName
         {
-            get { return ChromeRemoteInterface_CommandName; }
+            get { return DevToolsRemoteInterface_CommandName; }
         }
 
     {{#each command.Parameters}}

@@ -20,13 +20,14 @@
         private readonly string m_endpointAddress;
         private readonly ConcurrentDictionary<string, ConcurrentBag<Action<object>>> m_eventHandlers = new ConcurrentDictionary<string, ConcurrentBag<Action<object>>>();
         private readonly ConcurrentDictionary<Type, string> m_eventTypeMap = new ConcurrentDictionary<Type, string>();
+        private readonly TimeSpan m_closeConnectionWaitTimeSpan = TimeSpan.FromSeconds(2);
 
         private ClientWebSocket m_sessionSocket;
         private ManualResetEventSlim m_responseReceived = new ManualResetEventSlim(false);
         private LastResponseInfo m_lastResponse;
         private long m_currentCommandId = 0;
 
-        private Task receiveTask;
+        private Task m_receiveTask;
 
         /// <summary>
         /// Initializes a new instance of the DevToolsSession class, using the specified WebSocket endpoint.
@@ -209,7 +210,7 @@
             {
                 await m_sessionSocket.ConnectAsync(new Uri(m_endpointAddress), cancellationToken);
 
-                receiveTask = Task.Run(async () => await ReceiveMessage(tokenSource.Token));
+                m_receiveTask = Task.Run(async () => await ReceiveMessage(cancellationToken));
             }
         }
 
@@ -351,7 +352,7 @@
 
                     if (m_sessionSocket != null)
                     {
-                        if (receiveTask != null)
+                        if (m_receiveTask != null)
                         {
                             if (m_sessionSocket.State == WebSocketState.Open)
                             {
@@ -369,11 +370,12 @@
                                     // and this too must be caught. Finally, the call to CloseAsync
                                     // will hang even though  the connection is already severed.
                                     // Wait for the task to complete for a short time (since we're
-                                    // restricted to localhost, 2 seconds should be plenty), and if
-                                    // the task is still running, then we assume the connection is
-                                    // properly closed.
+                                    // restricted to localhost, the default of 2 seconds should be
+                                    // plenty; if not, change the initialization of the timout),
+                                    // and if the task is still running, then we assume the connection
+                                    // is properly closed.
                                     Task closeTask = Task.Run(() => m_sessionSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None));
-                                    closeTask.Wait(TimeSpan.FromSeconds(5));
+                                    closeTask.Wait(m_closeConnectionWaitTimeSpan);
                                 }
                                 catch (WebSocketException)
                                 {
@@ -388,9 +390,9 @@
 
                             // Wait for the recieve task to be completely exited (for
                             // whatever reason) before attempting to dispose it.
-                            receiveTask.Wait();
-                            receiveTask.Dispose();
-                            receiveTask = null;
+                            m_receiveTask.Wait();
+                            m_receiveTask.Dispose();
+                            m_receiveTask = null;
                         }
 
                         m_sessionSocket.Dispose();

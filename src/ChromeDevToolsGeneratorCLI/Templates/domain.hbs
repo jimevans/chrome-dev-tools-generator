@@ -9,17 +9,17 @@
     /// </summary>
     public class {{dehumanize domain.Name}}Adapter
     {
-        private readonly ChromeSession m_session;
+        private readonly DevToolsSession m_session;
         
-        public {{dehumanize domain.Name}}Adapter(ChromeSession session)
+        public {{dehumanize domain.Name}}Adapter(DevToolsSession session)
         {
             m_session = session ?? throw new ArgumentNullException(nameof(session));
         }
 
         /// <summary>
-        /// Gets the ChromeSession associated with the adapter.
+        /// Gets the DevToolsSession associated with the adapter.
         /// </summary>
-        public ChromeSession Session
+        public DevToolsSession Session
         {
             get { return m_session; }
         }

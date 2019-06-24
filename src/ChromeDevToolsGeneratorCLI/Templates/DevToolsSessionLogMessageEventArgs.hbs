@@ -10,7 +10,7 @@
 
     public class DevToolsSessionLogMessageEventArgs : EventArgs
     {
-        private readonly ChromeSessionLogLevel level;
+        private readonly DevToolsSessionLogLevel level;
         private readonly string message;
 
         public DevToolsSessionLogMessageEventArgs(DevToolsSessionLogLevel level, string message, params object[] args)
