@@ -1,0 +1,26 @@
+﻿namespace {{rootNamespace}}
+{
+    using System;
+
+    public enum DevToolsSessionLogLevel
+    {
+        Trace,
+        Error
+    }
+
+    public class DevToolsSessionLogMessageEventArgs : EventArgs
+    {
+        private readonly ChromeSessionLogLevel level;
+        private readonly string message;
+
+        public DevToolsSessionLogMessageEventArgs(DevToolsSessionLogLevel level, string message, params object[] args)
+        {
+            this.level = level;
+            this.message = string.Format(message, args);
+        }
+
+        public string Message => message;
+
+        public DevToolsSessionLogLevel Level => level;
+    }
+}
