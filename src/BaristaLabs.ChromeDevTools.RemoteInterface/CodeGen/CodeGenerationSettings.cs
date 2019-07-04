@@ -13,6 +13,7 @@
             //Set defaults
             Include = new List<CodeGenerationTemplateSettings>();
             IncludeDeprecatedDomains = true;
+            IncludeExperimentalDomains = true;
             RootNamespace = "BaristaLabs.ChromeDevTools";
             DefinitionTemplates = new CodeGenerationDefinitionTemplateSettings();
             TemplatesPath = "Templates";
@@ -37,6 +38,16 @@
         /// </summary>
         [JsonProperty("includeDeprecatedDomains")]
         public bool IncludeDeprecatedDomains
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Indicates whether or not domains marked as depreciated will be generated. (Default: true)
+        /// </summary>
+        [JsonProperty("includeExperimentalDomains")]
+        public bool IncludeExperimentalDomains
         {
             get;
             set;

@@ -25,13 +25,16 @@
                 Settings.TemplatesPath = Path.GetDirectoryName(Settings.TemplatesPath);
             }
 
-            ICollection<DomainDefinition> domains;
-            if (Settings.IncludeDeprecatedDomains)
-                domains = protocolDefinition.Domains;
-            else
-                domains = protocolDefinition.Domains
-                    .Where(d => d.Deprecated == false)
-                    .ToList();
+            ICollection<DomainDefinition> domains = protocolDefinition.Domains;
+            if (!Settings.IncludeDeprecatedDomains)
+            {
+                domains = domains.Where(d => d.Deprecated == false).ToList();
+            }
+
+            if (!Settings.IncludeExperimentalDomains)
+            {
+                domains = domains.Where(d => d.Experimental == false).ToList();
+            }
 
             //Get commandinfos as an array.
             ICollection<CommandInfo> commands = new List<CommandInfo>();
