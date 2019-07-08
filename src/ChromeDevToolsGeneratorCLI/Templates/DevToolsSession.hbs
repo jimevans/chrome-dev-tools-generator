@@ -18,13 +18,10 @@
     public partial class DevToolsSession : IDisposable
     {
         private readonly string m_endpointAddress;
-        private readonly ConcurrentDictionary<string, ConcurrentBag<Action<object>>> m_eventHandlers = new ConcurrentDictionary<string, ConcurrentBag<Action<object>>>();
-        private readonly ConcurrentDictionary<Type, string> m_eventTypeMap = new ConcurrentDictionary<Type, string>();
         private readonly TimeSpan m_closeConnectionWaitTimeSpan = TimeSpan.FromSeconds(2);
 
         private ClientWebSocket m_sessionSocket;
-        private ManualResetEventSlim m_responseReceived = new ManualResetEventSlim(false);
-        private LastResponseInfo m_lastResponse;
+        private ConcurrentDictionary<long, DevToolsCommandData> m_pendingCommands = new ConcurrentDictionary<long, DevToolsCommandData>();
         private long m_currentCommandId = 0;
 
         private Task m_receiveTask;
@@ -51,9 +48,23 @@
         public event EventHandler<DevToolsSessionLogMessageEventArgs> LogMessage;
 
         /// <summary>
+        /// Event raised an event notification is received from the DevTools session.
+        /// </summary>
+        internal event EventHandler<DevToolsEventReceivedEventArgs> DevToolsEventReceived;
+
+        /// <summary>
         /// Gets or sets the number of milliseconds to wait for a command to complete. Default is 5 seconds.
         /// </summary>
         public int CommandTimeout
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the active session ID of the connection.
+        /// </summary>
+        public string ActiveSessionId
         {
             get;
             set;
@@ -130,78 +141,45 @@
         [DebuggerStepThrough]
         public async Task<JToken> SendCommand(string commandName, JToken @params, CancellationToken cancellationToken = default(CancellationToken), int? millisecondsTimeout = null, bool throwExceptionIfResponseNotReceived = true)
         {
-            var message = new
-            {
-                id = Interlocked.Increment(ref m_currentCommandId),
-                method = commandName,
-                @params = @params
-            };
+            var message = new DevToolsCommandData(Interlocked.Increment(ref m_currentCommandId), ActiveSessionId, commandName, @params);
 
             if (millisecondsTimeout.HasValue == false)
                 millisecondsTimeout = CommandTimeout;
 
             await OpenSessionConnection(cancellationToken);
 
-            LogTrace("Sending {id} {method}: {params}", message.id, message.method, @params.ToString());
+            LogTrace("Sending {id} {method}: {params}", message.CommandId, message.CommandName, @params.ToString());
             
             var contents = JsonConvert.SerializeObject(message);
             var contentBuffer = Encoding.UTF8.GetBytes(contents);
 
-            m_responseReceived.Reset();
+            m_pendingCommands.TryAdd(message.CommandId, message);
             await m_sessionSocket.SendAsync(new ArraySegment<byte>(contentBuffer), WebSocketMessageType.Text, true, cancellationToken);
 
-            var responseWasReceived = await Task.Run(() => m_responseReceived.Wait(millisecondsTimeout.Value, cancellationToken));
+            var responseWasReceived = await Task.Run(() => message.SyncEvent.Wait(millisecondsTimeout.Value, cancellationToken));
 
             if (!responseWasReceived && throwExceptionIfResponseNotReceived)
                 throw new InvalidOperationException($"A command response was not received: {commandName}");
 
-            if (m_lastResponse.IsError)
+            DevToolsCommandData modified;
+            m_pendingCommands.TryRemove(message.CommandId, out modified);
+            if (modified.IsError)
             {
-                var errorMessage = m_lastResponse.Result.Value<string>("message");
-                var errorData = m_lastResponse.Result.Value<string>("data");
+                var errorMessage = modified.Result.Value<string>("message");
+                var errorData = modified.Result.Value<string>("data");
 
                 var exceptionMessage = $"{commandName}: {errorMessage}";
-                if (!String.IsNullOrWhiteSpace(errorData))
+                if (!string.IsNullOrWhiteSpace(errorData))
                     exceptionMessage = $"{exceptionMessage} - {errorData}";
 
-                LogTrace("Recieved Error Response {id}: {message} {data}", message.id, message, errorData);
+                LogTrace("Recieved Error Response {id}: {message} {data}", modified.CommandId, message, errorData);
                 throw new CommandResponseException(exceptionMessage)
                 {
-                    Code = m_lastResponse.Result.Value<long>("code")
+                    Code = modified.Result.Value<long>("code")
                 };
             }
-            return m_lastResponse.Result;
-        }
 
-        /// <summary>
-        /// Subscribes to the event associated with the given type.
-        /// </summary>
-        /// <typeparam name="TEvent">Event to subscribe to</typeparam>
-        /// <param name="eventCallback"></param>
-        public void Subscribe<TEvent>(Action<TEvent> eventCallback)
-            where TEvent : IEvent
-        {
-            if (eventCallback == null)
-                throw new ArgumentNullException(nameof(eventCallback));
-
-            var eventName = m_eventTypeMap.GetOrAdd(
-                typeof(TEvent),
-                (type) =>
-                {
-                    if (!EventTypeMap.TryGetMethodNameForType<TEvent>(out string methodName))
-                        throw new InvalidOperationException($"Type {typeof(TEvent)} does not correspond to a known event type.");
-
-                    return methodName;
-                });
-
-            var callbackWrapper = new Action<object>(obj => eventCallback((TEvent)obj));
-            m_eventHandlers.AddOrUpdate(eventName,
-                (m) => new ConcurrentBag<Action<object>>(new[] { callbackWrapper }),
-                (m, currentBag) =>
-                {
-                    currentBag.Add(callbackWrapper);
-                    return currentBag;
-                });
+            return modified.Result;
         }
 
         private async Task OpenSessionConnection(CancellationToken cancellationToken)
@@ -265,21 +243,6 @@
             }
         }
 
-        private void RaiseEvent(string methodName, JToken eventData)
-        {
-            if (m_eventHandlers.TryGetValue(methodName, out ConcurrentBag<Action<Object>> bag))
-            {
-                if (!EventTypeMap.TryGetTypeForMethodName(methodName, out Type eventType))
-                    throw new InvalidOperationException($"Unknown {methodName} does not correspond to a known event type.");
-
-                var typedEventData = eventData.ToObject(eventType);
-                foreach (var callback in bag)
-                {
-                    callback(typedEventData);
-                }
-            }
-        }
-
         private void ProcessIncomingMessage(string message)
         {
             var messageObject = JObject.Parse(message);
@@ -287,38 +250,42 @@
             long commandId;
             if (messageObject.TryGetValue("id", out JToken idProperty) && (commandId = idProperty.Value<long>()) == m_currentCommandId)
             {
-
+                DevToolsCommandData commandInfo;
+                m_pendingCommands.TryGetValue(commandId, out commandInfo);
                 if (messageObject.TryGetValue("error", out JToken errorProperty))
                 {
-                    m_lastResponse = new LastResponseInfo
-                    {
-                        IsError = true,
-                        Result = errorProperty
-                    };
-                    m_responseReceived.Set();
+                    commandInfo.IsError = true;
+                    commandInfo.Result = errorProperty;
+                    commandInfo.SyncEvent.Set();
                     return;
                 }
 
-                m_lastResponse = new LastResponseInfo
-                {
-                    Result = messageObject["result"]
-                };
-
-                LogTrace("Recieved Response {id}: {message}", commandId, m_lastResponse.Result.ToString());
-                m_responseReceived.Set();
+                commandInfo.Result = messageObject["result"];
+                LogTrace("Recieved Response {id}: {message}", commandId, commandInfo.Result.ToString());
+                commandInfo.SyncEvent.Set();
                 return;
             }
 
             if (messageObject.TryGetValue("method", out JToken methodProperty))
             {
                 var method = methodProperty.Value<string>();
+                var methodParts = method.Split(new char[] { '.' }, 2);
                 var eventData = messageObject["params"];
+
                 LogTrace("Recieved Event {method}: {params}", method, eventData.ToString());
-                RaiseEvent(method, eventData);
+                OnDevToolsEventReceived(new DevToolsEventReceivedEventArgs(methodParts[0], methodParts[1], eventData));
                 return;
             }
 
             LogTrace("Recieved Other: {message}", message);
+        }
+
+        private void OnDevToolsEventReceived(DevToolsEventReceivedEventArgs e)
+        {
+            if (DevToolsEventReceived != null)
+            {
+                DevToolsEventReceived(this, e);
+            }
         }
 
         private void LogTrace(string message, params object[] args)
@@ -346,10 +313,6 @@
             {
                 if (disposing)
                 {
-                    //Clear all subscribed events.
-                    m_eventHandlers.Clear();
-                    m_eventTypeMap.Clear();
-
                     if (m_sessionSocket != null)
                     {
                         if (m_receiveTask != null)
@@ -399,11 +362,7 @@
                         m_sessionSocket = null;
                     }
 
-                    if (m_responseReceived != null)
-                    {
-                        m_responseReceived.Dispose();
-                        m_responseReceived = null;
-                    }
+                    m_pendingCommands.Clear();
                 }
 
                 m_isDisposed = true;
@@ -416,14 +375,6 @@
         public void Dispose()
         {
             Dispose(true);
-        }
-        #endregion
-
-        #region Nested Classes
-        private class LastResponseInfo
-        {
-            public bool IsError = false;
-            public JToken Result;
         }
         #endregion
     }

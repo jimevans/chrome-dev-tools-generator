@@ -24,7 +24,7 @@
             EventTemplate = new CodeGenerationTemplateSettings
             {
                 TemplatePath = "event.hbs",
-                OutputPath = "{{domainName}}\\{{className}}Event.cs",
+                OutputPath = "{{domainName}}\\{{className}}EventArgs.cs",
             };
 
             TypeObjectTemplate = new CodeGenerationTemplateSettings

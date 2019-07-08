@@ -46,7 +46,7 @@
                     commands.Add(new CommandInfo
                     {
                         CommandName = $"{domain.Name}.{command.Name}",
-                        FullTypeName = $"{domain.Name.Dehumanize()}.{command.Name.Dehumanize()}Command",
+                        FullTypeName = $"{domain.Name.Dehumanize()}.{command.Name.Dehumanize()}CommandSettings",
                         FullResponseTypeName = $"{domain.Name.Dehumanize()}.{command.Name.Dehumanize()}CommandResponse"
                     });
                 }
@@ -62,7 +62,7 @@
                     events.Add(new EventInfo
                     {
                         EventName = $"{domain.Name}.{@event.Name}",
-                        FullTypeName = $"{domain.Name.Dehumanize()}.{@event.Name.Dehumanize()}Event"
+                        FullTypeName = $"{domain.Name.Dehumanize()}.{@event.Name.Dehumanize()}EventArgs"
                     });
                 }
             }

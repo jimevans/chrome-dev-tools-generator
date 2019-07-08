@@ -12,7 +12,7 @@
             s_commandResponseTypeDictionary = new Dictionary<Type, Type>()
             {
 {{#each commands}}
-                { typeof({{FullTypeName}}), typeof({{FullTypeName}}Response) },
+                { typeof({{FullTypeName}}), typeof({{FullResponseTypeName}}) },
 {{/each}}
             };
         }

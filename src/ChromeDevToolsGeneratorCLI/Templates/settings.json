@@ -17,6 +17,14 @@
       "outputPath": "CommandResponseTypeMap.cs"
     },
     {
+      "templatePath": "DevToolsCommandData.hbs",
+      "outputPath": "DevToolsCommandData.cs"
+    },
+    {
+      "templatePath": "DevToolsEventData.hbs",
+      "outputPath": "DevToolsEventData.cs"
+    },
+    {
       "templatePath": "DevToolsSession.hbs",
       "outputPath": "DevToolsSession.cs"
     },
@@ -25,20 +33,16 @@
       "outputPath": "DevToolsSession_Domains.cs"
     },
     {
+      "templatePath": "DevToolsSessionEventReceivedEventArgs.hbs",
+      "outputPath": "DevToolsSessionEventReceivedEventArgs.cs"
+    },
+    {
       "templatePath": "DevToolsSessionLogMessageEventArgs.hbs",
       "outputPath": "DevToolsSessionLogMessageEventArgs.cs"
     },
     {
-      "templatePath": "EventTypeMap.hbs",
-      "outputPath": "EventTypeMap.cs"
-    },
-    {
       "templatePath": "ICommand.hbs",
       "outputPath": "ICommand.cs"
-    },
-    {
-      "templatePath": "IEvent.hbs",
-      "outputPath": "IEvent.cs"
     }
   ],
   "rootNamespace": "OpenQA.Selenium.DevTools",

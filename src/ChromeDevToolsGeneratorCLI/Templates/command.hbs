@@ -5,7 +5,7 @@
     /// <summary>
     /// {{xml-code-comment command.Description 1}}
     /// </summary>
-    public sealed class {{className}}Command : ICommand
+    public sealed class {{className}}CommandSettings : ICommand
     {
         private const string DevToolsRemoteInterface_CommandName = "{{domain.Name}}.{{command.Name}}";
         
@@ -34,7 +34,7 @@
     {{/each}}
     }
 
-    public sealed class {{className}}CommandResponse : ICommandResponse<{{className}}Command>
+    public sealed class {{className}}CommandResponse : ICommandResponse<{{className}}CommandSettings>
     {
     {{#each command.Returns}}
         {{#if Description}}
